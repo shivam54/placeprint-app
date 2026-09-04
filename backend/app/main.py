@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from . import chat as chat_mod
 from . import observability as obs
 from . import summary as summary_mod
+from . import weather as weather_mod
 from .engine import FabricEngine
 from .taxonomy import BUCKETS, bucket_meta
 
@@ -93,6 +94,22 @@ def health() -> dict:
         "live": "analysis",
         "uptime_sec": obs.snapshot()["uptime_sec"],
     }
+
+
+@app.get("/api/weather")
+def weather(
+    lat: float = Query(..., ge=37.4, le=38.0),
+    lon: float = Query(..., ge=-123.0, le=-122.0),
+    lang: str = Query("en"),
+) -> dict:
+    """Live Open-Meteo conditions for the current pin (panel badge + Scout share the same fetch/cache)."""
+    wx = weather_mod.fetch_current(lat, lon)
+    if not wx:
+        raise HTTPException(502, "Weather unavailable")
+    out = dict(wx)
+    if lang.lower().startswith("es"):
+        out["condition"] = weather_mod.condition_es(out.get("condition"))
+    return {"ok": True, **out}
 
 
 @app.get("/api/metrics")

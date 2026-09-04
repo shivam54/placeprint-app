@@ -6,6 +6,7 @@ import type { Lang } from './i18n'
 import { t } from './i18n'
 import { bucketIncludes, bucketLabel } from './labels'
 import { nearestNeighborhood } from './neighborhoods'
+import { WeatherBadge } from './WeatherBadge'
 
 type Props = {
   lang: Lang
@@ -49,6 +50,7 @@ export function Panel({
   const copy = t(lang)
   const [howOpen, setHowOpen] = useState(false)
   const [startOpen, setStartOpen] = useState(true)
+  const [panelEl, setPanelEl] = useState<HTMLElement | null>(null)
 
   const selected = analysis?.dna.find((d) => d.id === activeBucket) ?? null
   const pinLabel = nearestNeighborhood(pinCenter.lon, pinCenter.lat, lang)
@@ -58,7 +60,7 @@ export function Panel({
       : pinLabel
 
   return (
-    <aside className="panel">
+    <aside className="panel" ref={setPanelEl}>
       <div className="panel-print" aria-hidden />
 
       <div className="topbar">
@@ -73,7 +75,13 @@ export function Panel({
       </div>
 
       <header className="panel-hero">
-        <p className="eyebrow">{copy.eyebrow}</p>
+        <WeatherBadge
+          lat={pinCenter.lat}
+          lon={pinCenter.lon}
+          lang={lang}
+          eyebrow={copy.eyebrow}
+          panelEl={panelEl}
+        />
         <h1>{copy.title}</h1>
         <p className="lede">{copy.lede}</p>
       </header>

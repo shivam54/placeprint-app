@@ -6,7 +6,9 @@ const STORAGE_KEY = 'placeprint-intro-v1'
 
 export function introAlreadySeen(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === '1'
+    // Clear older permanent dismiss so returning reviewers can see the intro again
+    localStorage.removeItem(STORAGE_KEY)
+    return sessionStorage.getItem(STORAGE_KEY) === '1'
   } catch {
     return false
   }
@@ -14,7 +16,9 @@ export function introAlreadySeen(): boolean {
 
 function markIntroSeen(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, '1')
+    sessionStorage.setItem(STORAGE_KEY, '1')
+    // Drop any old permanent flag from earlier builds
+    localStorage.removeItem(STORAGE_KEY)
   } catch {
     /* ignore */
   }

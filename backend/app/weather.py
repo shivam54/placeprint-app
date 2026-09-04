@@ -98,7 +98,7 @@ def fetch_current(lat: float, lon: float) -> dict[str, Any] | None:
         {
             "latitude": lat,
             "longitude": lon,
-            "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m",
+            "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day",
             "temperature_unit": "fahrenheit",
             "wind_speed_unit": "mph",
             "timezone": "America/Los_Angeles",
@@ -114,15 +114,36 @@ def fetch_current(lat: float, lon: float) -> dict[str, Any] | None:
 
     cur = payload.get("current") or {}
     code = int(cur.get("weather_code") or 0)
+    is_day = int(cur.get("is_day") or 0) == 1
     out = {
         "source": "Open-Meteo",
         "temp_f": round(float(cur.get("temperature_2m") or 0), 1),
         "feels_like_f": round(float(cur.get("apparent_temperature") or 0), 1),
         "condition": _WMO.get(code, "Unknown"),
         "weather_code": code,
+        "is_day": is_day,
+        "mood": mood_from_code(code, is_day),
         "wind_mph": round(float(cur.get("wind_speed_10m") or 0), 1),
         "humidity_pct": int(cur.get("relative_humidity_2m") or 0),
         "observed_at": cur.get("time"),
     }
     _cache[key] = (time.time(), out)
     return dict(out)
+
+
+def mood_from_code(code: int, is_day: bool) -> str:
+    if code in (95, 96, 99):
+        return "storm"
+    if code in (71, 73, 75):
+        return "snow"
+    if code in (51, 53, 55, 61, 63, 65, 80, 81, 82):
+        return "rain"
+    if code in (45, 48):
+        return "fog"
+    if code == 3:
+        return "cloudy"
+    if code == 2:
+        return "partly"
+    if code in (0, 1):
+        return "clear" if is_day else "night"
+    return "cloudy" if not is_day else "partly"

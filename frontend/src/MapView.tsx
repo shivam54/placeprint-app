@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AttributionControl,
   LngLatBounds,
@@ -23,6 +23,48 @@ import {
 } from './neighborhoods'
 
 setWorkerUrl(mapWorkerUrl)
+
+type MapMood = 'day' | 'dusk' | 'night'
+
+function emptyLine() {
+  return { type: 'FeatureCollection' as const, features: [] as never[] }
+}
+
+function lineBetween(a: { lon: number; lat: number }, b: { lon: number; lat: number }) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: [
+      {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [a.lon, a.lat],
+            [b.lon, b.lat],
+          ],
+        },
+      },
+    ],
+  }
+}
+
+async function fetchMapMood(lat: number, lon: number): Promise<MapMood> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&current=is_day&timezone=America%2FLos_Angeles`
+  const res = await fetch(url)
+  if (!res.ok) return 'day'
+  const data = (await res.json()) as {
+    current?: { is_day?: number; time?: string }
+  }
+  const isDay = data.current?.is_day === 1
+  const hour = Number((data.current?.time || '').slice(11, 13))
+  if (!Number.isFinite(hour)) return isDay ? 'day' : 'night'
+  if (!isDay || hour >= 20 || hour < 6) return 'night'
+  if (hour >= 17 || hour < 8) return 'dusk'
+  return 'day'
+}
 
 type Props = {
   center: { lon: number; lat: number }
@@ -143,11 +185,31 @@ export function MapView({
   const onDragRef = useRef(onDragLive)
   const langRef = useRef(lang)
   const centerRef = useRef(center)
+  const [mapMood, setMapMood] = useState<MapMood>('day')
   onPickRef.current = onPick
   onTwinJumpRef.current = onTwinJump
   onDragRef.current = onDragLive
   langRef.current = lang
   centerRef.current = center
+
+  const setPinNeighborhood = (name: string) => {
+    const label = markerRef.current?.getElement().querySelector('.pin-nbhd')
+    if (label) label.textContent = name
+  }
+
+  const clearTwinLink = () => {
+    const map = mapRef.current
+    const src = map?.getSource('twin-link') as GeoJSONSource | undefined
+    src?.setData(emptyLine())
+  }
+
+  const showTwinLink = (toLon: number, toLat: number) => {
+    const map = mapRef.current
+    const src = map?.getSource('twin-link') as GeoJSONSource | undefined
+    if (!src) return
+    const from = centerRef.current
+    src.setData(lineBetween(from, { lon: toLon, lat: toLat }))
+  }
 
   const showPinLabel = (lon: number, lat: number, html: string) => {
     const map = mapRef.current
@@ -224,6 +286,21 @@ export function MapView({
         type: 'line',
         source: 'radius',
         paint: { 'line-color': '#0e7c7b', 'line-width': 2.5, 'line-opacity': 0.9 },
+      })
+      map.addSource('twin-link', {
+        type: 'geojson',
+        data: emptyLine(),
+      })
+      map.addLayer({
+        id: 'twin-link-line',
+        type: 'line',
+        source: 'twin-link',
+        paint: {
+          'line-color': '#10212b',
+          'line-width': 1.6,
+          'line-opacity': 0.45,
+          'line-dasharray': [2.2, 1.6],
+        },
       })
       map.addSource('highlights', {
         type: 'geojson',
@@ -308,10 +385,12 @@ export function MapView({
 
     const el = document.createElement('div')
     el.className = 'pin'
-    el.innerHTML = `<span class="pin-hint">${dragHintLabel}</span>`
+    el.innerHTML = `<span class="pin-nbhd"></span><span class="pin-hint">${dragHintLabel}</span>`
     const placeName = nearestNeighborhood(center.lon, center.lat, lang)
     el.title = placeName
     el.setAttribute('aria-label', placeName)
+    const nbhd = el.querySelector('.pin-nbhd')
+    if (nbhd) nbhd.textContent = placeName
     const marker = new Marker({ element: el, draggable: true })
       .setLngLat([center.lon, center.lat])
       .addTo(map)
@@ -329,7 +408,9 @@ export function MapView({
 
     marker.on('drag', () => {
       hidePinLabel()
+      clearTwinLink()
       const ll = marker.getLngLat()
+      setPinNeighborhood(nearestNeighborhood(ll.lng, ll.lat, langRef.current))
       const src = map.getSource('radius') as GeoJSONSource | undefined
       if (src) src.setData(circlePolygon(ll.lng, ll.lat, radiusM))
       onDragRef.current?.(ll.lng, ll.lat)
@@ -368,11 +449,17 @@ export function MapView({
     if (!map) return
     markerRef.current?.setLngLat([center.lon, center.lat])
     const pinEl = markerRef.current?.getElement()
+    const name = nearestNeighborhood(center.lon, center.lat, lang)
     if (pinEl) {
-      const name = nearestNeighborhood(center.lon, center.lat, lang)
       pinEl.title = name
       pinEl.setAttribute('aria-label', name)
+      // Replay land animation when the pin jumps (Explore / twin / click)
+      pinEl.classList.remove('pin--land')
+      void pinEl.offsetWidth
+      pinEl.classList.add('pin--land')
     }
+    setPinNeighborhood(name)
+    clearTwinLink()
     map.easeTo({ center: [center.lon, center.lat], duration: 550 })
     const src = map.getSource('radius') as GeoJSONSource | undefined
     if (src) src.setData(circlePolygon(center.lon, center.lat, radiusM))
@@ -391,6 +478,23 @@ export function MapView({
       requestAnimationFrame(tick)
     }
   }, [center.lon, center.lat, radiusM, lang])
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      fetchMapMood(center.lat, center.lon)
+        .then((mood) => {
+          if (!cancelled) setMapMood(mood)
+        })
+        .catch(() => {
+          if (!cancelled) setMapMood('day')
+        })
+    }, 400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [center.lon, center.lat])
 
   useEffect(() => {
     const map = mapRef.current
@@ -441,6 +545,7 @@ export function MapView({
     const map = mapRef.current
     if (!map) return
     hidePinLabel()
+    clearTwinLink()
     similarMarkers.current.forEach((m) => m.remove())
     similarMarkers.current = similar.map((s, i) => {
       const placeName = nearestNeighborhood(s.lon, s.lat, lang)
@@ -474,15 +579,20 @@ export function MapView({
       inner.textContent = String(i + 1)
       el.appendChild(inner)
       el.addEventListener('mouseenter', () => {
+        showTwinLink(s.lon, s.lat)
         showPinLabel(
           s.lon,
           s.lat,
           `<strong>${escapeHtml(headline)}</strong><span>${escapeHtml(sub)}</span>`,
         )
       })
-      el.addEventListener('mouseleave', hidePinLabel)
+      el.addEventListener('mouseleave', () => {
+        clearTwinLink()
+        hidePinLabel()
+      })
       el.addEventListener('click', (ev) => {
         ev.stopPropagation()
+        clearTwinLink()
         hidePinLabel()
         const jump = onTwinJumpRef.current
         if (jump) jump(s.lon, s.lat, i + 1)
@@ -506,7 +616,7 @@ export function MapView({
   }, [similar, lang, center.lon, center.lat])
 
   return (
-    <div className="map-shell">
+    <div className={`map-shell map-shell--${mapMood}`}>
       <div className="map-root" ref={containerRef} />
       {filterLabel && (
         <div className="map-filter-chip">

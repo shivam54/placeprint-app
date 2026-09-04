@@ -170,3 +170,32 @@ export async function fetchSummary(body: {
   if (!res.ok) return null
   return res.json()
 }
+
+export type PinWeather = {
+  ok: boolean
+  temp_f: number
+  feels_like_f: number
+  condition: string
+  weather_code: number
+  is_day: boolean
+  mood: string
+  wind_mph: number
+  humidity_pct: number
+  observed_at?: string
+  source?: string
+}
+
+export async function fetchWeather(
+  lat: number,
+  lon: number,
+  lang: string,
+): Promise<PinWeather | null> {
+  const q = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    lang,
+  })
+  const res = await fetch(`/api/weather?${q}`)
+  if (!res.ok) return null
+  return res.json()
+}
