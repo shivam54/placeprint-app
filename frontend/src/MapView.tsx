@@ -6,10 +6,13 @@ import {
   Marker,
   NavigationControl,
   Popup,
+  setWorkerUrl,
   type GeoJSONSource,
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+// Vite production: bundle a self-contained worker or vector tiles never load
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import type { PlaceDot, SimilarArea } from './api'
 import { bucketEmoji } from './bucketEmoji'
 import type { Lang } from './i18n'
@@ -18,6 +21,8 @@ import {
   formatDistance,
   nearestNeighborhood,
 } from './neighborhoods'
+
+setWorkerUrl(mapWorkerUrl)
 
 type Props = {
   center: { lon: number; lat: number }
