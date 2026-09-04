@@ -1,0 +1,3 @@
+# Only needed to refresh data/sf_places.json
+-r requirements.txt
+overturemaps>=0.15.0

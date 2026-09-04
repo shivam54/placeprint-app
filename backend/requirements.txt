@@ -1,0 +1,9 @@
+# Runtime deps for the Placeprint API (download script uses overturemaps separately).
+python-dotenv>=1.0.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
+numpy>=2.1.0
+scipy>=1.14.0
+pydantic>=2.10.0
+orjson>=3.10.0
+python-multipart>=0.0.12

@@ -1,0 +1,19 @@
+# Placeprint on Render - one Web Service (API + built React UI)
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: placeprint
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      cd frontend && npm install && npm run build
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: ANTHROPIC_API_KEY
+        sync: false

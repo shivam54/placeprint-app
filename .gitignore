@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+frontend/dist/
+data/sf_places_raw.geojson
+data/*.state
+.env
+.vite/
