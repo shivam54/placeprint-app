@@ -1,14 +1,10 @@
 # Placeprint - write-up
 
-**Built by Shivam Singla** 
-
-**Pitch:** Drop a pin on any San Francisco block and read its placeprint - block DNA, a short story, twin blocks nearby, and Scout (a chat guide grounded in that pin’s data + live weather).
+Drop a pin on any San Francisco block and read its placeprint - block DNA, a short story, twin blocks nearby, and Scout (a chat guide grounded in that pin’s data + live weather).
 
 Short setup: [README.md](./README.md)
 
 ---
-
-## Why this
 
 Most map apps answer “what’s nearby?” Placeprint answers **“what is this block like?”** - the mix of cafes, clinics, parks, shops - then compares that mix to similar SF pockets so gaps feel relative, not absolute.
 
@@ -25,6 +21,8 @@ I can share a key for review, or you can add your own in the host `.env` . Witho
 
 ---
 
+
+
 ## How to try it
 
 1. Intro (or Skip) → **Explore San Francisco** or **Use my location** (SF only).
@@ -36,7 +34,11 @@ I can share a key for review, or you can add your own in the host `.env` . Witho
 
 ---
 
+
+
 ## Diagrams
+
+
 
 ### Experience flow
 
@@ -53,6 +55,8 @@ flowchart LR
   FeatureCards -.-> Skip
   Skip --> MainApp
 ```
+
+
 
 
 
@@ -74,6 +78,8 @@ flowchart LR
 
 
 
+
+
 ### Pin → story
 
 ```mermaid
@@ -84,6 +90,8 @@ flowchart TD
   UI --> Brief["Brief with cache"]
   Brief --> Show["Show story"]
 ```
+
+
 
 
 
@@ -100,6 +108,8 @@ flowchart TD
 
 
 ---
+
+
 
 ## What’s in the product
 
@@ -118,13 +128,15 @@ flowchart TD
 
 **Observability APIs (light, no Datadog):**
 
-- **`GET /api/metrics`** - open this in a browser while the backend is running. Returns uptime, place count, counters (e.g. `analyze.ok`, `summary.claude`, `event.explore_sf`), and timing stats (p50 / p95 / last ms) for analyze, summary, chat, and places. Coordinates in logs are rounded; **chat text is never stored**.
-- **`POST /api/events`** - the frontend posts short product beacons here (explore SF, use location, category tap, Scout open, twin jump, intro done/skip, …). Browsers can’t “view” this URL (GET returns Method Not Allowed). Example check:  
-  `curl -X POST http://127.0.0.1:8000/api/events -H 'Content-Type: application/json' -d '{"name":"explore_sf","props":{}}'` → `{"ok":true}`, then refresh `/api/metrics` to see the counter.
+- `GET /api/metrics` - open this in a browser while the backend is running. Returns uptime, place count, counters (e.g. `analyze.ok`, `summary.claude`, `event.explore_sf`), and timing stats (p50 / p95 / last ms) for analyze, summary, chat, and places. Coordinates in logs are rounded; **chat text is never stored**.
+- `POST /api/events` - the frontend posts short product beacons here (explore SF, use location, category tap, Scout open, twin jump, intro done/skip, …). Browsers can’t “view” this URL (GET returns Method Not Allowed). Example check:  
+`curl -X POST http://127.0.0.1:8000/api/events -H 'Content-Type: application/json' -d '{"name":"explore_sf","props":{}}'` → `{"ok":true}`, then refresh `/api/metrics` to see the counter.
 
 **Data:** Overture places (SF file) · OpenFreeMap basemap · DataSF Rec/Our415 activities · Wikipedia landmarks · Open-Meteo weather · Claude Haiku (optional but recommended).
 
 ---
+
+
 
 ## Constraints
 
@@ -137,6 +149,8 @@ flowchart TD
 
 ---
 
+
+
 ## Edge cases
 
 1. **Outside SF** - modal; pin stays in SF until you Explore.
@@ -147,6 +161,8 @@ flowchart TD
 6. **Missing places file** - API won’t start until `download_places.py` has been run.
 
 ---
+
+
 
 ## Trade-offs
 
@@ -163,6 +179,8 @@ flowchart TD
 
 ---
 
+
+
 ## Future work
 
 1. **Scale beyond one box** - multi-city with tiled / GeoParquet Overture serve; don’t load a whole city into one process.
@@ -170,12 +188,14 @@ flowchart TD
 3. **Traffic and load** - queue or rate-limit Claude; shared Redis cache for briefs; horizontal API replicas; keep `/api/metrics` (or Datadog) for latency and error rates.
 4. **Richer live events** - nightlife / Ticketmaster-class feeds next to Rec/Our415, with clear source labels and fresher TTLs.
 5. **True walk / drive time** - replace crow-flies radius with network travel:
-   - Run a routing engine (**OSRM** or **Valhalla**) on SF road data (OSM or Overture transportation).
-   - Backend: isochrone / “reachable within N minutes” polygons for **walk** and **drive** modes; keep the same analyze + DNA + twins pipeline on places inside that polygon.
-   - UI: mode toggle (Walk / Drive) next to the existing 5 / 10 / 15 min controls; draw the isochrone instead of (or over) the circle.
-   - Out of scope without a router: drive ETAs from Overture places alone.
+  - Run a routing engine (**OSRM** or **Valhalla**) on SF road data (OSM or Overture transportation).
+  - Backend: isochrone / “reachable within N minutes” polygons for **walk** and **drive** modes; keep the same analyze + DNA + twins pipeline on places inside that polygon.
+  - UI: mode toggle (Walk / Drive) next to the existing 5 / 10 / 15 min controls; draw the isochrone instead of (or over) the circle.
+  - Out of scope without a router: drive ETAs from Overture places alone.
 
 ---
+
+
 
 ## Attribution
 

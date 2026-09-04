@@ -56,7 +56,7 @@ const FEATURES: FeatureCard[] = [
   },
   {
     title: 'Scout this pin',
-    body: 'Chat with a local guide grounded in map data - weather, cafes, twin blocks - not the open web.',
+    body: 'Chat with a local guide grounded in map data - weather, cafes, twin blocks - not the open web. Live weather also glows at the top of the panel as you move the pin.',
   },
   {
     title: 'Find twin blocks',
@@ -88,7 +88,7 @@ const FEATURES_ES: FeatureCard[] = [
   },
   {
     title: 'Scout este pin',
-    body: 'Habla con una guía local anclada a los datos del mapa - clima, cafés, bloques gemelos - no a la web abierta.',
+    body: 'Habla con una guía local anclada a los datos del mapa - clima, cafés, bloques gemelos - no a la web abierta. El clima en vivo también brilla arriba del panel al mover el pin.',
   },
   {
     title: 'Encuentra bloques gemelos',
