@@ -105,11 +105,18 @@ def fetch_current(lat: float, lon: float) -> dict[str, Any] | None:
         }
     )
     url = f"https://api.open-meteo.com/v1/forecast?{params}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Placeprint/0.3"})
+    # Browser-like UA — some hosts reject bare library user-agents
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; Placeprint/0.3)",
+            "Accept": "application/json",
+        },
+    )
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError):
+    except Exception:
         return None
 
     cur = payload.get("current") or {}
