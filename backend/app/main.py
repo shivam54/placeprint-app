@@ -52,6 +52,8 @@ class ChatRequest(BaseModel):
     lang: str = Field("en")
     analysis: dict[str, Any] | None = None
     history: list[ChatHistoryTurn] = Field(default_factory=list)
+    # Optional: browser-fetched Open-Meteo (Render often cannot reach Open-Meteo server-side)
+    weather: dict[str, Any] | None = None
 
 
 class SummaryRequest(BaseModel):
@@ -229,7 +231,7 @@ def chat(body: ChatRequest) -> dict:
         lat=obs.round_coord(float(center["lat"])) if center.get("lat") is not None else None,
         history_len=len(history),
     ) as meta:
-        out = chat_mod.reply(body.message, body.analysis, body.lang, history)
+        out = chat_mod.reply(body.message, body.analysis, body.lang, history, body.weather)
         meta["source"] = out.get("source")
         if out.get("source") == "claude":
             obs.incr("chat.claude")

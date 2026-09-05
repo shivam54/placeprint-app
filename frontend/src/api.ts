@@ -135,6 +135,7 @@ export async function chat(body: {
   lang: string
   analysis: Analysis | null
   history?: { role: 'user' | 'assistant'; content: string }[]
+  weather?: PinWeather | null
 }): Promise<{ reply: string; suggestions: string[]; source?: string }> {
   const res = await fetch('/api/chat', {
     method: 'POST',

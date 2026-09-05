@@ -24,6 +24,7 @@ def reply(
     analysis: dict[str, Any] | None,
     lang: str = "en",
     history: list[dict[str, str]] | None = None,
+    weather: dict[str, Any] | None = None,
 ) -> dict:
     text = (message or "").strip()
     es = lang.lower().startswith("es")
@@ -46,18 +47,20 @@ def reply(
         }
 
     context = _build_context(analysis, es=es)
-    # Live weather for this pin (Open-Meteo) - only fact source for weather answers
-    center = analysis.get("center") or {}
-    try:
-        lat = float(center.get("lat"))
-        lon = float(center.get("lon"))
-        wx = weather_mod.fetch_current(lat, lon)
-        if wx:
-            if es:
-                wx = {**wx, "condition": weather_mod.condition_es(wx.get("condition"))}
-            context["weather"] = wx
-    except (TypeError, ValueError):
-        pass
+    # Prefer client-provided weather (browser can reach Open-Meteo when Render cannot)
+    wx = _sanitize_weather(weather)
+    if not wx:
+        center = analysis.get("center") or {}
+        try:
+            lat = float(center.get("lat"))
+            lon = float(center.get("lon"))
+            wx = weather_mod.fetch_current(lat, lon)
+        except (TypeError, ValueError):
+            wx = None
+    if wx:
+        if es:
+            wx = {**wx, "condition": weather_mod.condition_es(wx.get("condition"))}
+        context["weather"] = wx
 
     claude = _claude_chat(text, context, lang, history or [])
     if claude:
@@ -66,6 +69,35 @@ def reply(
     out = _local_reply(text, analysis, es, context.get("weather"))
     out["source"] = "local"
     return out
+
+
+def _sanitize_weather(raw: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Accept only the Open-Meteo fields we already use — never free-form client text as facts."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        temp_f = float(raw.get("temp_f"))
+        feels = float(raw.get("feels_like_f", temp_f))
+        wind = float(raw.get("wind_mph", 0))
+        humidity = int(raw.get("humidity_pct", 0))
+        code = int(raw.get("weather_code", 0))
+    except (TypeError, ValueError):
+        return None
+    if not (-40.0 <= temp_f <= 130.0):
+        return None
+    condition = str(raw.get("condition") or "").strip()[:48]
+    if not condition:
+        condition = weather_mod.condition_from_code(code)
+    return {
+        "source": "Open-Meteo",
+        "temp_f": round(temp_f, 1),
+        "feels_like_f": round(feels, 1),
+        "condition": condition,
+        "weather_code": code,
+        "is_day": bool(raw.get("is_day", True)),
+        "wind_mph": round(wind, 1),
+        "humidity_pct": max(0, min(100, humidity)),
+    }
 
 
 def _lab(row: dict[str, Any] | None, es: bool, key: str = "label") -> str:

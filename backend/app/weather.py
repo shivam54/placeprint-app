@@ -66,6 +66,10 @@ def condition_es(condition: str | None) -> str:
     return _WMO_ES.get(condition, condition)
 
 
+def condition_from_code(code: int) -> str:
+    return _WMO.get(code, "Unknown")
+
+
 def format_line(weather: dict[str, Any], es: bool = False) -> str:
     cond = weather.get("condition")
     if es:

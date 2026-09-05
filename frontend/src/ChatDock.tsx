@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { chat, type Analysis } from './api'
+import { chat, fetchWeather, type Analysis } from './api'
 import type { Lang } from './i18n'
 import { t } from './i18n'
 
@@ -56,7 +56,11 @@ export function ChatDock({ open, onClose, lang, analysis }: Props) {
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text,
       }))
-      const res = await chat({ message: trimmed, lang, analysis, history })
+      let weather = null
+      if (analysis?.center) {
+        weather = await fetchWeather(analysis.center.lat, analysis.center.lon, lang)
+      }
+      const res = await chat({ message: trimmed, lang, analysis, history, weather })
       setMessages((m) => [...m, { role: 'bot', text: res.reply }])
       if (res.suggestions?.length) setSuggestions(res.suggestions)
     } catch {
